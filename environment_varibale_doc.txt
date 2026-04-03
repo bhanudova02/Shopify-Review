@@ -19,3 +19,95 @@ client_id: 553d6d3ab46ad16e29306adeef5f0ea0
 client_secret: shpss_******************************** (HIDDEN FOR GITHUB PUSH)
 
 grant_type: client_credentials
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mowa, future projects lo time waste avvakunda ee documentation ni save chesko. 2026 lo Shopify direct tokens ivvatledhu kabatti, ee **Client Credentials** flow eh standard approach.
+
+## **Shopify App Environment Setup Guide (2026 Method)**
+
+Follow these exact steps to connect your Next.js project to any Shopify store.
+
+---
+
+### **1. Create `.env.local` File**
+Nee Next.js project **root directory** lo (bahata folder lo, `src` bayata) `.env.local` ane file ni create cheyali. 
+
+### **2. Collect Partner Credentials**
+* **Shopify Partner Dashboard** open chesi nee app select cheyi.
+* Left menu lo **Settings** tab ki vellu.
+* Akkada unna **Client ID** mariyu **Client Secret** (starts with `shpss_`) ni copy chesi dacha pettuko.
+* **App Setup** section lo kavalsina **Scopes** (e.g., `read_products`, `read_metaobjects`) add chesi **Save** kottadam marchipoku.
+
+### **3. Generate `SHOPIFY_ACCESS_TOKEN` (Postman)**
+Shopify modern security prakaram, manam oka manual request chesi token theesukovali:
+
+* **URL**: `https://{YOUR_SHOP_NAME}.myshopify.com/admin/oauth/access_token`
+* **Method**: `POST`
+* **Body Type**: `x-www-form-urlencoded`
+* **Keys**:
+    * `client_id`: (Nee App Client ID)
+    * `client_secret`: (Nee App Client Secret)
+    * `grant_type`: `client_credentials`
+
+**Response** lo vachina `access_token` (`shpat_...`) ni copy chesko.
+
+---
+
+### **4. Environment File Template**
+Nee `.env.local` file lo kindha unna variables ni update cheyi:
+
+| Variable Name | Description | Example Value |
+| :--- | :--- | :--- |
+| **`SHOPIFY_SHOP`** | Nee live store domain | `cwytui-ah.myshopify.com` |
+| **`SHOPIFY_ACCESS_TOKEN`** | Postman lo vachina `shpat_` key | `shpat_a9e3e25ca6687fb...` |
+| **`NEXT_PUBLIC_API_URL`** | Local development URL | `http://localhost:3000` |
+
+---
+
+### **5. Apply Changes**
+Variables add chesaka, kachithanga terminal lo server aapi (`Ctrl+C`) malli ee command kottu:
+```bash
+npm run dev
+```
+
+"**Mowa, ee documentation follow ayithe ey kotha project ayina 5 minutes lo setup aypothundhi. Shopify updates valla patha methods work avvavu kabatti, Postman dwara `shpat_` token theesukovadam eh correct process. Ippudu nee project root lo file ready chesi kotha token petti restart chey bro.**"
+
+Mowa, environment setup aypoyi data 'Ghanangaa' load avthundha, ledha inka skeletons kanapaduthunnaya?
