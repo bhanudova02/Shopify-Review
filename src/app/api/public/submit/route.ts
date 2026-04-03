@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const SHOPIFY_API_VERSION = "2024-01";
-const ALLOWED_ORIGIN = "https://cwytui-ah.myshopify.com";
+const ALLOWED_ORIGINS = ["https://cwytui-ah.myshopify.com", "http://localhost:3000"];
 
 interface SubmitReviewBody {
   author: string;
@@ -16,16 +16,16 @@ type ShopifyGraphQLResponse<T> = {
 };
 
 function getCorsHeaders(origin: string | null) {
-  if (origin !== ALLOWED_ORIGIN) {
+  // Allow if no origin (e.g. Postman) or if origin is explicitly allowed
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) {
     return null;
   }
 
   return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
-    Vary: "Origin",
   };
 }
 
@@ -155,8 +155,8 @@ export async function POST(request: NextRequest) {
           { key: "rating", value: String(numericRating) },
           { key: "content", value: content },
           { key: "product_id", value: productId },
-          { key: "status", value: "draft" },
-          { key: "approved", value: "false" },
+          // { key: "status", value: "draft" },
+          // { key: "approved", value: "false" },
         ],
       },
     });
