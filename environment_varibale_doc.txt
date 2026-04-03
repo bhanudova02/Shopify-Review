@@ -4,33 +4,18 @@ SHOPIFY_ACCESS_TOKEN=
 
 
 
-The "Golden Method" for Shopify Token (2026 Standard)
-Ika nunchi ey Shopify project ayina, ee documentation follow ayipo:
+How to Get Shopify Access Token Method
+========================================
+New URL: https://cwytui-ah.myshopify.com/admin/oauth/access_token
 
-Partner Dashboard Setup:
+Body Format: JSON badhulu x-www-form-urlencoded try cheyi (Shopify authentication endpoints eppudu form-data ne prefer chesthaayi).
 
-Kotha App create cheyi.
+Postman lo Body tab select chesi, x-www-form-urlencoded radio button nokku.
 
-App Setup loki velli, kavalasinna scopes (read_products, read_metaobjects, etc.) add chesi Save kottu.
+Kindha table lo ee keys add cheyi:
 
-Settings nunchi Client ID mariyu Client Secret (shpss_...) copy chesko.
+client_id: 553d6d3ab46ad16e29306adeef5f0ea0
 
-Postman Request:
-
-Method: POST
-
-URL: https://{your-shop-name}.myshopify.com/admin/oauth/access_token
-
-Body Type: Select x-www-form-urlencoded.
-
-Keys:
-
-client_id: (Nee App Client ID)
-
-client_secret: (Nee App Client Secret)
+client_secret: shpss_******************************** (HIDDEN FOR GITHUB PUSH)
 
 grant_type: client_credentials
-
-Result:
-
-Shopify neeku access_token (shpat_...) isthundhi. Dhenini okka saari generate chesi persistent ga vaadochu.
