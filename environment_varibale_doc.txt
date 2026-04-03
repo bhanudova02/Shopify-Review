@@ -4,3 +4,33 @@ SHOPIFY_ACCESS_TOKEN=
 
 
 
+The "Golden Method" for Shopify Token (2026 Standard)
+Ika nunchi ey Shopify project ayina, ee documentation follow ayipo:
+
+Partner Dashboard Setup:
+
+Kotha App create cheyi.
+
+App Setup loki velli, kavalasinna scopes (read_products, read_metaobjects, etc.) add chesi Save kottu.
+
+Settings nunchi Client ID mariyu Client Secret (shpss_...) copy chesko.
+
+Postman Request:
+
+Method: POST
+
+URL: https://{your-shop-name}.myshopify.com/admin/oauth/access_token
+
+Body Type: Select x-www-form-urlencoded.
+
+Keys:
+
+client_id: (Nee App Client ID)
+
+client_secret: (Nee App Client Secret)
+
+grant_type: client_credentials
+
+Result:
+
+Shopify neeku access_token (shpat_...) isthundhi. Dhenini okka saari generate chesi persistent ga vaadochu.
