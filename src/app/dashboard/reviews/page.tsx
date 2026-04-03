@@ -11,6 +11,9 @@ type ReviewMetaobject = {
   rating?: number | string;
   content?: string;
   product_id?: string;
+  product_handle?: string;
+  product_image?: string | null;
+  product_title?: string;
   status?: string;
   approved?: boolean;
   updatedAt?: string;
@@ -113,6 +116,9 @@ export default function ReviewsPage() {
         rating: Number(review?.rating || 0),
         content: review?.content || "N/A",
         productId: review?.product_id || "N/A",
+        productHandle: review?.product_handle || "",
+        productImage: review?.product_image || null,
+        productTitle: review?.product_title || "Unknown Product",
         status: review?.status || "pending",
         approved: review?.approved || false,
         isDraft,
@@ -145,7 +151,7 @@ export default function ReviewsPage() {
                 <th className="px-4 py-3 font-semibold">Author</th>
                 <th className="px-4 py-3 font-semibold">Rating</th>
                 <th className="px-4 py-3 font-semibold">Content</th>
-                <th className="px-4 py-3 font-semibold">Product ID</th>
+                <th className="px-4 py-3 font-semibold">Product</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Action</th>
               </tr>
@@ -165,7 +171,57 @@ export default function ReviewsPage() {
                       <RatingStars rating={entry.rating} />
                     </td>
                     <td className="max-w-xs px-4 py-3 text-zinc-700">{entry.content}</td>
-                    <td className="px-4 py-3 text-zinc-700">{entry.productId}</td>
+                    <td className="px-4 py-3 text-zinc-700">
+                      <div className="flex items-center gap-3">
+                        {entry.productImage ? (
+                          <div 
+                            className="relative aspect-square h-10 w-10 shrink-0 overflow-hidden rounded-md border border-zinc-200 bg-zinc-50"
+                            title={entry.productTitle}
+                          >
+                            <img
+                              src={entry.productImage}
+                              alt={entry.productTitle || "Product"}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-square h-10 w-10 shrink-0 overflow-hidden rounded-md border border-zinc-200">
+                            <Skeleton className="h-full w-full rounded-none" />
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">{entry.productId}</span>
+                          <div className="mt-0.5 flex items-center gap-2">
+                            <a
+                              href={
+                                entry.productHandle
+                                  ? `https://cwytui-ah.myshopify.com/products/${entry.productHandle}`
+                                  : "#"
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex max-w-[140px] items-center gap-1 hover:underline ${
+                                entry.productTitle === "Unknown Product" ? "text-zinc-400" : "text-blue-600"
+                              }`}
+                              title={entry.productTitle}
+                            >
+                              <span className="truncate text-xs">{entry.productTitle}</span>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-70"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                            </a>
+                            {!entry.productImage && (
+                              <button
+                                type="button"
+                                onClick={() => void fetchReviews()}
+                                title="Refresh Data"
+                                className="min-w-max rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] text-zinc-600 transition-colors hover:bg-zinc-100"
+                              >
+                                Refresh Data
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
                         {entry.displayStatus}

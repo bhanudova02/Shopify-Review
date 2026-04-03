@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const GRAPHQL_URL = "https://cwytui-ah.myshopify.com/admin/api/2024-01/graphql.json";
-const ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || "";
+function getShopifyAccessToken() {
+  // Ensure token in environment has read_products and read_product_listings scopes configured in Shopify.
+  return process.env.SHOPIFY_ACCESS_TOKEN || "";
+}
 
 type ReviewNode = {
   id?: string;
@@ -30,7 +33,7 @@ export async function GET() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": ACCESS_TOKEN,
+        "X-Shopify-Access-Token": getShopifyAccessToken(),
         "User-Agent": "Mozilla/5.0",
       },
       body: JSON.stringify({ query }),
@@ -59,12 +62,12 @@ export async function GET() {
     const getFieldValue = (node: ReviewNode, key: string) => {
       const fields = Array.isArray(node.fields) ? node.fields : [];
       const matched = fields.find(
-        (field) => String(field?.key || "").toLowerCase() === key.toLowerCase()
+        (field) => String(field?.key || "").toLowerCase().trim() === key.toLowerCase().trim()
       );
       return matched?.value ?? null;
     };
 
-    const reviews = nodes.map((node) => {
+    let reviews = nodes.map((node) => {
       const approvedValue = (
         getFieldValue(node, "approved") ||
         getFieldValue(node, "Approved") ||
@@ -79,10 +82,155 @@ export async function GET() {
         author: getFieldValue(node, "author") || "Unknown",
         content: getFieldValue(node, "content") || "Unknown",
         rating: Number(getFieldValue(node, "rating") || 0),
-        product_id: getFieldValue(node, "product_id") || "N/A",
+        product_id: getFieldValue(node, "product_id")?.trim() || "N/A",
+        product_image: getFieldValue(node, "product_image") || getFieldValue(node, "image") || null,
         approved: isApproved,
       };
     });
+
+    // Fetch product images based on extracted product_ids
+    const uniqueProductIds = Array.from(
+      new Set(reviews.map((r) => r.product_id).filter((id) => id && id !== "N/A"))
+    );
+
+    if (uniqueProductIds.length > 0) {
+      // Ensure IDs are valid GIDs for the product
+      const gids = uniqueProductIds.map((id) =>
+        id.includes("gid://") ? id : `gid://shopify/Product/${id}`
+      );
+
+      console.log('Final gids array before sending request:', gids);
+
+      const productQuery = `
+        query GetProductImages($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            ... on Product {
+              id
+              title
+              handle
+              featuredImage {
+                url
+              }
+            }
+          }
+        }
+      `;
+
+      try {
+        const productResponse = await fetch(GRAPHQL_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": getShopifyAccessToken(),
+            "User-Agent": "Mozilla/5.0",
+          },
+          body: JSON.stringify({ query: productQuery, variables: { ids: gids } }),
+          cache: "no-store",
+        });
+
+        if (productResponse.ok) {
+          const productJson = (await productResponse.json()) as any;
+          console.log('Shopify Product Response:', JSON.stringify(productJson, null, 2));
+
+          const productNodes = productJson.data?.nodes || [];
+          console.log('RAW Shopify Nodes Response:', JSON.stringify(productNodes, null, 2));
+
+          const productImagesMap: Record<string, string> = {};
+          const productTitlesMap: Record<string, string> = {};
+          const productHandlesMap: Record<string, string> = {};
+
+          if (Array.isArray(productNodes) && productNodes.some((node: any) => node === null)) {
+            console.warn("Product not found for some IDs in nodes query. Attempting fallback query...");
+            const missingGids = gids.filter((_, index) => productNodes[index] === null);
+            
+            if (missingGids.length > 0) {
+              const fallbackQueries = missingGids.map((gid, idx) => {
+                const numericId = gid.split("/").pop() || "";
+                return `
+                  q${idx}: products(first: 1, query: "id:${numericId}") {
+                    edges {
+                      node {
+                        id
+                        title
+                        handle
+                        featuredImage {
+                          url
+                        }
+                      }
+                    }
+                  }
+                `;
+              }).join("\\n");
+              
+              const fallbackQueryStr = `query GetProductsFallback { ${fallbackQueries} }`;
+              
+              try {
+                const fallbackResponse = await fetch(GRAPHQL_URL, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-Shopify-Access-Token": getShopifyAccessToken(),
+                    "User-Agent": "Mozilla/5.0",
+                  },
+                  body: JSON.stringify({ query: fallbackQueryStr }),
+                  cache: "no-store",
+                });
+                
+                if (fallbackResponse.ok) {
+                  const fallbackJson = await fallbackResponse.json();
+                  missingGids.forEach((gid, idx) => {
+                    const edge = fallbackJson.data?.[`q${idx}`]?.edges?.[0];
+                    if (edge && edge.node) {
+                      const originalIndex = gids.indexOf(gid);
+                      if (originalIndex !== -1) {
+                         productNodes[originalIndex] = edge.node;
+                      }
+                    }
+                  });
+                }
+              } catch (fallbackErr) {
+                 console.error("Fallback product fetch failed:", fallbackErr);
+              }
+            }
+          }
+
+          productNodes.forEach((p: any) => {
+            if (p && p.id) {
+              const idTrimmed = String(p.id).trim();
+              const rawId = idTrimmed.split("/").pop() || ""; 
+              
+              const title = p.title;
+              if (title) {
+                productTitlesMap[idTrimmed] = title;
+                productTitlesMap[rawId] = title;
+              }
+
+              const handle = p.handle;
+              if (handle) {
+                productHandlesMap[idTrimmed] = handle;
+                productHandlesMap[rawId] = handle;
+              }
+
+              const imageUrl = p.featuredImage?.url;
+              if (imageUrl) {
+                productImagesMap[idTrimmed] = imageUrl;
+                productImagesMap[rawId] = imageUrl;
+              }
+            }
+          });
+
+          // Attach the fetched product image and title if we found a match
+          reviews = reviews.map((r) => ({
+            ...r,
+            product_image: productImagesMap[r.product_id] || r.product_image || null,
+            product_title: productTitlesMap[r.product_id] || "Unknown Product",
+            product_handle: productHandlesMap[r.product_id] || "",
+          }));
+        }
+      } catch (imgFetchErr) {
+        console.error("Failed to fetch product images:", imgFetchErr);
+      }
+    }
 
     return NextResponse.json({ reviews });
   } catch (error) {
@@ -154,7 +302,7 @@ export async function PATCH(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": ACCESS_TOKEN,
+        "X-Shopify-Access-Token": getShopifyAccessToken(),
         "User-Agent": "Mozilla/5.0",
       },
       body: JSON.stringify({ query, variables }),
@@ -190,7 +338,7 @@ export async function PATCH(request: NextRequest) {
       const getFieldValue = (node: any, key: string) => {
         const fields = Array.isArray(node.fields) ? node.fields : [];
         const matched = fields.find(
-          (field: any) => String(field?.key || "").toLowerCase() === key.toLowerCase()
+          (field: any) => String(field?.key || "").toLowerCase().trim() === key.toLowerCase().trim()
         );
         return matched?.value ?? null;
       };
@@ -202,7 +350,8 @@ export async function PATCH(request: NextRequest) {
         author: getFieldValue(metaobject, "author") || "Unknown",
         content: getFieldValue(metaobject, "content") || "Unknown",
         rating: Number(getFieldValue(metaobject, "rating") || 0),
-        product_id: getFieldValue(metaobject, "product_id") || "N/A",
+        product_id: getFieldValue(metaobject, "product_id")?.trim() || "N/A",
+      product_image: getFieldValue(metaobject, "product_image") || getFieldValue(metaobject, "image") || null,
         approved: isApprove,
       } as any;
     }
